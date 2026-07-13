@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>You Are The Product — How Tracking Actually Works</title>
+<style>
+  :root {
+    --bg: #0a0a12;
+    --bg-2: #12121f;
+    --ink: #e8e8f0;
+    --ink-dim: #9090a8;
+    --accent: #00ffaa;
+    --accent-2: #ff3e7f;
+    --accent-3: #ffd23e;
+    --accent-4: #7c5cff;
+    --grid: rgba(255, 255, 255, 0.05);
+    --glow: 0 0 24px rgba(0, 255, 170, 0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    line-height: 1.6;
+    overflow-x: hidden;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Hero */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(124, 92, 255, 0.15) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .eyebrow {
+    color: var(--accent-2);
+    font-size: 0.85rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    animation: blink 2s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .hero h1 {
+    font-size: clamp(2.5rem, 7vw, 5.5rem);
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-4) 50%, var(--accent-2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 1rem;
+  }
+
+  .hero .sub {
+    font-size: clamp(1rem, 2vw, 1.4rem);
+    color: var(--ink-dim);
+    max-width: 720px;
+    margin: 0 auto 2.5rem;
+  }
+
+  .scan-line {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    box-shadow: 0 0 20px var(--accent);
+    animation: scan 4s linear infinite;
+  }
+
+  @keyframes scan {
+    0% { top: 0; }
+    100% { top: 100%; }
+  }
+
+  /* Tracking dots overlay */
+  #tracking-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  main { position: relative; z-index: 2; }
+
+  section {
+    padding: 6rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-tag {
+    display: inline-block;
+    color: var(--accent-3);
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--accent-3);
+    border-radius: 2px;
+    margin-bottom: 1.5rem;
+  }
+
+  h2 {
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  h2 .hl { color: var(--accent); }
+  h2 .hl2 { color: var(--accent-2); }
+  h2 .hl3 { color: var(--accent-4); }
+  h2 .hl4 { color: var(--accent-3); }
+
+  p.lead {
+    font-size: 1.15rem;
+    color: var(--ink-dim);
+    max-width: 760px;
+    margin-bottom: 2rem;
+  }
+
+  /* Card grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+  }
+
+  .card {
+    background: var(--bg-2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 1.8rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: var(--glow);
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px; height: 100%;
+    background: var(--accent);
+  }
+
+  .card.c2::before { background: var(--accent-2); }
+  .card.c2:hover { border-color: var(--accent-2); box-shadow: 0 0 24px rgba(255, 62, 127, 0.35); }
+  .card.c3::before { background: var(--accent-3); }
+  .card.c3:hover { border-color: var(--accent-3); box-shadow: 0 0 24px rgba(255, 210, 62, 0.35); }
+  .card.c4::before { background: var(--accent-4); }
+  .card.c4:hover { border-color: var(--accent-4); box-shadow: 0 0 24px rgba(124, 92, 255, 0.35); }
+
+  .card .icon {
+    font-size: 2.2rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  .card h3 {
+    font-size: 1.3rem;
+    margin-bottom: 0.6rem;
+    color: var(--ink);
+  }
+
+  .card p {
+    color: var(--ink-dim);
+    font-size: 0.95rem;
+  }
+
+  .card .meta {
+    display: inline-block;
+    margin-top: 1rem;
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  /* Pipeline diagram */
+  .pipeline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+    align-items: stretch;
+    margin: 3rem 0;
+  }
+
+  .pipe-stage {
+    background: var(--bg-2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 1.5rem;
+    min-width: 220px;
+    flex: 1 1 220px;
+    text-align: center;
+  }
+
+  .pipe-stage h4 {
+    color: var(--accent);
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 0.8rem;
+  }
+
+  .pipe-stage .num {
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: var(--ink);
+    margin-bottom: 0.4rem;
+  }
+
+  .pipe-arrow {
+    align-self: center;
+    color: var(--accent);
+    font-size: 1.6rem;
+    font-weight: 900;
+  }
+
+  /* Interactive widget — fingerprint */
+  .widget {
+    background: var(--bg-2);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 2.5rem;
+    margin: 3rem auto;
+    max-width: 760px;
+    box-shadow: var(--glow);
+  }
+
+  .widget h3 {
+    color: var(--accent);
+    font-size: 1.4rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .widget .sub {
+    color: var(--ink-dim);
+    font-size: 0.9rem;
+    margin-bottom: 1.8rem;
+  }
+
+  .fp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .fp-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0.8rem;
+    background: rgba(0, 255, 170, 0.05);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+  }
+
+  .fp-row .k {
+    color: var(--ink-dim);
+  }
+
+  .fp-row .v {
+    color: var(--accent);
+    font-weight: bold;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fp-hash {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #000;
+    border: 1px dashed var(--accent-2);
+    border-radius: 6px;
+    text-align: center;
+  }
+
+  .fp-hash .label {
+    color: var(--accent-2);
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  .fp-hash .hash {
+    color: var(--accent);
+    font-size: 1.3rem;
+    word-break: break-all;
+    letter-spacing: 0.05em;
+  }
+
+  .btn {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 0.7rem 1.4rem;
+    font-family: inherit;
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    margin-top: 1.2rem;
+  }
+
+  .btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+    box-shadow: var(--glow);
+  }
+
+  /* Consent banner parody */
+  .consent-stage {
+    background: var(--bg-2);
+    border: 1px dashed rgba(255, 62, 127, 0.5);
+    border-radius: 10px;
+    padding: 2.5rem;
+    margin: 3rem 0;
+    text-align: center;
+  }
+
+  .fake-banner {
+    background: #1c1c2e;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem auto;
+    max-width: 480px;
+    text-align: left;
+    font-family: Arial, sans-serif;
+  }
+
+  .fake-banner h5 {
+    color: #fff;
+    font-size: 1.1rem;
+    margin-bottom: 0.4rem;
+    font-weight: bold;
+  }
+
+  .fake-banner p {
+    color: #b8b8c8;
+    font-size: 0.85rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .fake-buttons {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .fake-accept {
+    background: #4a8cff;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.4rem;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+
+  .fake-manage {
+    background: transparent;
+    color: #b8b8c8;
+    border: none;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .callout {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: rgba(255, 62, 127, 0.1);
+    border-left: 3px solid var(--accent-2);
+    color: var(--accent-2);
+    font-size: 0.9rem;
+    text-align: left;
+  }
+
+  /* Identity graph viz */
+  .graph-stage {
+    background: var(--bg-2);
+    border: 1px solid rgba(124, 92, 255, 0.4);
+    border-radius: 10px;
+    padding: 2.5rem;
+    margin: 3rem 0;
+  }
+
+  #identity-graph {
+    width: 100%;
+    height: 460px;
+    display: block;
+  }
+
+  /* Counter */
+  .counter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    justify-content: space-around;
+    margin: 3rem 0;
+    text-align: center;
+  }
+
+  .counter {
+    flex: 1 1 200px;
+  }
+
+  .counter .num {
+    font-size: clamp(2.4rem, 5vw, 3.8rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-4) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+  }
+
+  .counter .lbl {
+    color: var(--ink-dim);
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 0.6rem;
+  }
+
+  /* Take action section */
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+
+  .action {
+    padding: 1.2rem;
+    background: var(--bg-2);
+    border-radius: 6px;
+    border: 1px solid rgba(0, 255, 170, 0.2);
+    transition: all 0.2s;
+  }
+
+  .action:hover {
+    border-color: var(--accent);
+    transform: translateX(4px);
+  }
+
+  .action .x {
+    color: var(--accent);
+    font-weight: bold;
+    margin-right: 0.6rem;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 3rem 2rem;
+    text-align: center;
+    color: var(--ink-dim);
+    font-size: 0.85rem;
+  }
+
+  footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  footer a:hover {
+    text-decoration: underline;
+  }
+
+  /* Reveal on scroll */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+
+  .reveal.in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 720px) {
+    .fp-grid { grid-template-columns: 1fr; }
+    .pipe-arrow { display: none; }
+    section { padding: 4rem 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="tracking-canvas"></canvas>
+
+<header class="hero">
+  <div class="scan-line"></div>
+  <div class="eyebrow">// live signal: 3 trackers observed in the last 4s</div>
+  <h1>You Are The Product.</h1>
+  <p class="sub">
+    A playful, slightly paranoid tour of the report
+    <strong>"The Architecture of Tracking"</strong> — how data mining
+    algorithms quietly compile a profile of you while you read this sentence.
+  </p>
+  <a href="#capture" class="btn">Start the tour →</a>
+</header>
+
+<main>
+
+<!-- SECTION 1: Surveillance Capitalism -->
+<section id="intro" class="reveal">
+  <span class="section-tag">// 01 — the frame</span>
+  <h2>First, a small <span class="hl">awkward</span> idea.</h2>
+  <p class="lead">
+    In 2019, a Harvard professor named <em>Shoshana Zuboff</em> coined a term that
+    tech companies really wish she hadn't: <strong>surveillance capitalism</strong>.
+    The thesis is short and rude. The product isn't the app. <em>You</em> are the
+    product. Your behavior is the raw material, and the prediction products
+    manufactured from it are sold to advertisers as "behavioral futures."
+  </p>
+  <p class="lead">
+    Picture a shopping mall where the stores are free, the escalators track
+    which floors you linger on, the food court logs what you eat, and the
+    parking garage records your license plate. Then the mall sells a profile
+    of you to a vendor you've never met. The stores being free is not generosity.
+    It's a business model.
+  </p>
+</section>
+
+<!-- SECTION 2: The 4 capture channels -->
+<section id="capture" class="reveal">
+  <span class="section-tag">// 02 — the inputs</span>
+  <h2>Four little <span class="hl2">spies</span> are watching.</h2>
+  <p class="lead">
+    The report identifies four redundant channels through which the system
+    pulls signal. Each one is individually defensible; together, they're a surveillance
+    machine. Here they are, in plain language.
+  </p>
+
+  <div class="grid">
+    <div class="card c2">
+      <span class="icon">🍪</span>
+      <h3>Cookies &amp; Local Storage</h3>
+      <p>
+        Tiny text files a site asks your browser to remember. Useful for logins.
+        Also useful for following you across the internet like a toddler following
+        a balloon. You can clear them. They come right back.
+      </p>
+      <span class="meta">channel 01 · drop &amp; reattach</span>
+    </div>
+
+    <div class="card c3">
+      <span class="icon">🧬</span>
+      <h3>Device Fingerprinting</h3>
+      <p>
+        No files on your device at all. The site just looks at your screen size,
+        installed fonts, time zone, and 50 other boring details — and combines
+        them into a quasi-unique ID. Clearing your cookies doesn't help. You
+        didn't install anything to remove.
+      </p>
+      <span class="meta">channel 02 · passive ghost</span>
+    </div>
+
+    <div class="card c4">
+      <span class="icon">📱</span>
+      <h3>Mobile SDK Telemetry</h3>
+      <p>
+        Apps ship with "Software Development Kits" from analytics and ad firms
+        baked right in. Even when you opt out of "interest-based ads" in your
+        phone settings, the SDK's actual scope is wider than the legal
+        definition of opt-out. The setting is a label, not a wall.
+      </p>
+      <span class="meta">channel 03 · resident informant</span>
+    </div>
+
+    <div class="card">
+      <span class="icon">🕸️</span>
+      <h3>Cross-Platform Identity Graphs</h3>
+      <p>
+        The server-side brain. A graph stitches together your phone's
+        advertising ID, your laptop's fingerprint, the email you used to log
+        in, the device your smart TV identifies as, and the loyalty card from
+        the grocery store — into one persistent record. Clear your cookies.
+        Change your email. The graph still knows it's you.
+      </p>
+      <span class="meta">channel 04 · persistent you</span>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 3: Live fingerprint widget -->
+<section class="reveal">
+  <span class="section-tag">// 03 — proof of concept</span>
+  <h2>Want to see your own <span class="hl3">fingerprint</span>?</h2>
+  <p class="lead">
+    This widget inspects your browser right now (entirely on your device, no
+    data sent anywhere) and produces a quasi-unique identifier. The very
+    same kind of identifier that trackers build in the background of the
+    pages you actually visit. Try it: open this site in a different browser,
+    or a private window, and watch the hash change.
+  </p>
+
+  <div class="widget">
+    <h3>// browser-fingerprint inspector</h3>
+    <p class="sub">All values computed locally. No network call. No data leaves this page.</p>
+    <div class="fp-grid" id="fp-grid"></div>
+    <div class="fp-hash">
+      <div class="label">// your computed tracking id</div>
+      <div class="hash" id="fp-hash">computing…</div>
+    </div>
+    <button class="btn" id="fp-recompute">↻ Re-roll the dice</button>
+  </div>
+</section>
+
+<!-- SECTION 4: The 4 algorithms -->
+<section class="reveal">
+  <span class="section-tag">// 04 — the processing layer</span>
+  <h2>Then four <span class="hl4">algorithms</span> get to work.</h2>
+  <p class="lead">
+    The capture layer just shovels raw signal. The interesting work happens
+    in the mining layer — the four data-mining techniques the report
+    identifies as the workhorses of behavioral profiling.
+  </p>
+
+  <div class="grid">
+    <div class="card c4">
+      <span class="icon">🎯</span>
+      <h3>Classification</h3>
+      <p>
+        "Predict attributes about this person." A gradient-boosted tree,
+        given your browsing history, guesses: pregnant? new parent?
+        conservative? About to switch jobs? The model can be 95% accurate
+        on average — and dead wrong about the individual who loses the job.
+      </p>
+      <span class="meta">attribute prediction</span>
+    </div>
+
+    <div class="card">
+      <span class="icon">🧩</span>
+      <h3>Clustering</h3>
+      <p>
+        "Group people who look alike." You become a dot in a 47-dimensional
+        cluster called something like <em>likely-mover-affluent-nighttime-optimizer</em>.
+        The clusters are not transparent even to the people who created them.
+        Sometimes they correlate with protected attributes in ways nobody
+        designed on purpose. That's discrimination by association.
+      </p>
+      <span class="meta">audience segmentation</span>
+    </div>
+
+    <div class="card c2">
+      <span class="icon">🔗</span>
+      <h3>Association Rule Induction</h3>
+      <p>
+        "If a user does X, they often do Y." The classic supermarket
+        "people who buy diapers also buy beer" — applied to your life.
+        People who view mental-health content also view payday-loan
+        content. The system has decided they go together. You didn't.
+      </p>
+      <span class="meta">inference of co-occurrence</span>
+    </div>
+
+    <div class="card c3">
+      <span class="icon">⏭️</span>
+      <h3>Sequence Modeling</h3>
+      <p>
+        "Predict what comes next." Given the last 200 events, what will
+        you do in the next 5 minutes? Click? Buy? Leave? Recurrent neural
+        networks and transformers are very good at this. They are also
+        very good at pushing you toward the next thing — and they get
+        better with every cycle of the feedback loop.
+      </p>
+      <span class="meta">next-action prediction</span>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 5: The 4 harms -->
+<section class="reveal">
+  <span class="section-tag">// 05 — the outputs</span>
+  <h2>Four <span class="hl">harms</span> come out the other side.</h2>
+  <p class="lead">
+    The report's theoretical framework — built on Solove's taxonomy of
+    privacy harm — names four distinct ways the system injures people.
+    They are not theoretical. They are happening to your friends.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <span class="icon">🎭</span>
+      <h3>Re-identification</h3>
+      <p>
+        Anonymized data is supposed to protect you. 87% of Americans can
+        be uniquely identified from just ZIP, birth date, and sex
+        (Sweeney, 2002). A "de-identified" movie-rating dataset was
+        re-identified against public reviews in one weekend
+        (Narayanan &amp; Shmatikov, 2010). Anonymity is a polite fiction.
+      </p>
+      <span class="meta">harm 01</span>
+    </div>
+
+    <div class="card c2">
+      <span class="icon">⚖️</span>
+      <h3>Behavioral Discrimination</h3>
+      <p>
+        Same person, different price. Higher insurance premium. Job
+        ad not shown. Credit denied. The model didn't see your race.
+        It saw the cluster you fell into — and the cluster correlated.
+        The harm is real, the intent is deniable, and the recourse
+        is somewhere between thin and nonexistent.
+      </p>
+      <span class="meta">harm 02</span>
+    </div>
+
+    <div class="card c3">
+      <span class="icon">🧠</span>
+      <h3>Manipulative Persuasion</h3>
+      <p>
+        The system that knows your sequence-model-predicted next move
+        can time a message, a price, or a headline to maximize the
+        chance you take the bait. This is not advertising. This is
+        an engineered nudge with your behavioral signature already
+        baked into the trigger condition.
+      </p>
+      <span class="meta">harm 03</span>
+    </div>
+
+    <div class="card c4">
+      <span class="icon">🤐</span>
+      <h3>Chilling Effect</h3>
+      <p>
+        You don't search for that medical symptom anymore. You don't
+        read that political article with your name attached. The
+        surveillance doesn't even have to use what it collected —
+        the fact that it <em>could</em> is enough to make you
+        self-edit. The harm is the silence.
+      </p>
+      <span class="meta">harm 04</span>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 6: Identity Graph Visualization -->
+<section class="reveal">
+  <span class="section-tag">// 06 — see it for yourself</span>
+  <h2>The <span class="hl3">identity graph</span>, alive.</h2>
+  <p class="lead">
+    Below is a simulated identity graph: one user ("you") at the center,
+    with the various identifiers and behaviors that get stitched together
+    into a single persistent profile. Hover any node to see what the
+    system is inferring. Spoiler: it's a lot.
+  </p>
+
+  <div class="graph-stage">
+    <svg id="identity-graph" viewBox="0 0 800 460" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+</section>
+
+<!-- SECTION 7: Consent banner parody -->
+<section class="reveal">
+  <span class="section-tag">// 07 — the consent lie</span>
+  <h2>One <span class="hl2">quick question</span> for you.</h2>
+  <p class="lead">
+    Below is a perfectly normal cookie banner. You've seen four hundred of
+    them this week. Take a careful look at the design — the colors, the
+    button placement, the typography — and ask yourself who the design
+    is actually serving.
+  </p>
+
+  <div class="consent-stage">
+    <div class="fake-banner">
+      <h5>We value your privacy 🍪</h5>
+      <p>
+        We use cookies to enhance your browsing experience, serve personalized
+        ads or content, and analyze our traffic. By clicking "Accept All",
+        you consent to our use of cookies.
+        <a href="#" style="color:#4a8cff">Privacy Policy</a>
+      </p>
+      <div class="fake-buttons">
+        <button class="fake-manage">Manage preferences</button>
+        <button class="fake-accept" onclick="consentLies()">Accept All</button>
+      </div>
+    </div>
+    <div class="callout" id="callout">
+      // that "Accept All" button is high-contrast blue. The "Manage preferences"
+      link is a small underlined text. The data flows don't change either way.
+    </div>
+    <button class="btn" onclick="document.getElementById('callout').innerText='// you clicked it. so did 99.3% of users. the design is working as intended.'">
+      I clicked it anyway
+    </button>
+  </div>
+</section>
+
+<!-- SECTION 8: What to do -->
+<section id="act" class="reveal">
+  <span class="section-tag">// 08 — what now</span>
+  <h2>So what do you <span class="hl">do</span>?</h2>
+  <p class="lead">
+    The report is honest about this: no single tool is enough. Privacy is
+    a property of the system, not a setting on your phone. But the
+    recommendations cluster into a few useful moves.
+  </p>
+
+  <div class="actions">
+    <div class="action"><span class="x">→</span> Use a tracker-blocking browser (Firefox, Brave, Librewolf).</div>
+    <div class="action"><span class="x">→</span> Container tabs to keep work identities separated.</div>
+    <div class="action"><span class="x">→</span> A vetted VPN — but know that a VPN is one link in the chain, not the chain itself.</div>
+    <div class="action"><span class="x">→</span> Pay for services when you can. The free ones are funded by the profile.</div>
+    <div class="action"><span class="x">→</span> Support regulators who push for algorithmic data-flow registers.</div>
+    <div class="action"><span class="x">→</span> Push for privacy architecture to be a core CS course, not an elective.</div>
+    <div class="action"><span class="x">→</span> Fund journalism that investigates specific algorithmic harms.</div>
+    <div class="action"><span class="x">→</span> Stop reading this list. The biggest move is collective pressure, not individual opt-outs.</div>
+  </div>
+</section>
+
+<!-- SECTION 9: The big number -->
+<section class="reveal" style="text-align:center;">
+  <span class="section-tag">// 09 — by the numbers</span>
+  <h2>The <span class="hl2">scale</span> of the thing.</h2>
+
+  <div class="counter-row">
+    <div class="counter">
+      <div class="num" data-target="87">0</div>
+      <div class="lbl">% of Americans uniquely re-identifiable from ZIP + DOB + sex</div>
+    </div>
+    <div class="counter">
+      <div class="num" data-target="95">0</div>
+      <div class="lbl">% accuracy — and the 5% are concentrated on the same people</div>
+    </div>
+    <div class="counter">
+      <div class="num" data-target="72">0</div>
+      <div class="lbl">hours. GDPR breach notification window. The data was already sold.</div>
+    </div>
+    <div class="counter">
+      <div class="num" data-target="1">0</div>
+      <div class="lbl">persistent you. The identity graph doesn't fragment.</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>
+    Based on the research report
+    <strong>"The Architecture of Tracking: Examining How Data Mining Algorithms Compromise User Privacy"</strong>
+    (Chapters 1–5, July 2026).
+  </p>
+  <p style="margin-top:0.6rem;">
+    Theories: Zuboff (surveillance capitalism) · Nissenbaum (contextual integrity) · Solove (taxonomy of privacy harm).
+  </p>
+  <p style="margin-top:0.6rem;">
+    Built as a single-file interactive explainer · No analytics · No cookies · <a href="#">reload</a> to see the fingerprint change.
+  </p>
+</footer>
+
+<script>
+  // ---------- Background tracking dots ----------
+  (function () {
+    const canvas = document.getElementById('tracking-canvas');
+    const ctx = canvas.getContext('2d');
+    let w, h, dots = [];
+    function resize() {
+      w = canvas.width = window.innerWidth * devicePixelRatio;
+      h = canvas.height = window.innerHeight * devicePixelRatio;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.scale(1, 1);
+    }
+    function spawn() {
+      for (let i = 0; i < 18; i++) {
+        dots.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          vx: (Math.random() - 0.5) * 0.3 * devicePixelRatio,
+          vy: (Math.random() - 0.5) * 0.3 * devicePixelRatio,
+          r: (1 + Math.random() * 2) * devicePixelRatio,
+          a: 0.15 + Math.random() * 0.4,
+        });
+      }
+    }
+    function tick() {
+      ctx.clearRect(0, 0, w, h);
+      for (const d of dots) {
+        d.x += d.vx; d.y += d.vy;
+        if (d.x < 0 || d.x > w) d.vx *= -1;
+        if (d.y < 0 || d.y > h) d.vy *= -1;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 255, 170, ${d.a})`;
+        ctx.fill();
+      }
+      // connecting lines for nearby dots
+      for (let i = 0; i < dots.length; i++) {
+        for (let j = i + 1; j < dots.length; j++) {
+          const dx = dots[i].x - dots[j].x;
+          const dy = dots[i].y - dots[j].y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 140 * devicePixelRatio) {
+            ctx.beginPath();
+            ctx.moveTo(dots[i].x, dots[i].y);
+            ctx.lineTo(dots[j].x, dots[j].y);
+            ctx.strokeStyle = `rgba(0, 255, 170, ${(1 - dist / (140 * devicePixelRatio)) * 0.15})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+    resize(); spawn(); tick();
+    window.addEventListener('resize', resize);
+  })();
+
+  // ---------- Reveal on scroll ----------
+  (function () {
+    const els = document.querySelectorAll('.reveal');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.1 });
+    els.forEach((el) => io.observe(el));
+  })();
+
+  // ---------- Browser fingerprint ----------
+  (function () {
+    function djb2(str) {
+      let h = 5381;
+      for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) & 0xffffffff;
+      return (h >>> 0).toString(16).padStart(8, '0');
+    }
+    function gather() {
+      const ua = navigator.userAgent;
+      const langs = navigator.languages ? navigator.languages.join(',') : navigator.language;
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown';
+      const offset = new Date().getTimezoneOffset();
+      const screen = `${screen.width}x${screen.height}@${window.devicePixelRatio}x`;
+      const colorDepth = screen.colorDepth;
+      const mem = navigator.deviceMemory || 'n/a';
+      const cores = navigator.hardwareConcurrency || 'n/a';
+      const touch = navigator.maxTouchPoints || 0;
+      const plat = navigator.platform || 'unknown';
+      const conn = navigator.connection ? navigator.connection.effectiveType : 'n/a';
+      return {
+        'User-Agent': ua.slice(0, 60) + (ua.length > 60 ? '…' : ''),
+        'Languages': langs,
+        'Timezone': tz + ' (UTC' + (offset > 0 ? '-' : '+') + Math.abs(offset / 60) + ')',
+        'Screen': screen,
+        'Color depth': colorDepth + '-bit',
+        'Device memory': mem + ' GB',
+        'CPU cores': cores,
+        'Touch points': touch,
+        'Platform': plat,
+        'Network': conn,
+      };
+    }
+    function render() {
+      const data = gather();
+      const grid = document.getElementById('fp-grid');
+      grid.innerHTML = '';
+      let concat = '';
+      for (const [k, v] of Object.entries(data)) {
+        const row = document.createElement('div');
+        row.className = 'fp-row';
+        row.innerHTML = `<span class="k">${k}</span><span class="v" title="${v}">${v}</span>`;
+        grid.appendChild(row);
+        concat += v;
+      }
+      // build a 32-char hash
+      const h1 = djb2(concat);
+      const h2 = djb2(concat.split('').reverse().join('') + h1);
+      const h3 = djb2(h1 + h2);
+      const h4 = djb2(h2 + h3);
+      document.getElementById('fp-hash').textContent = (h1 + h2 + h3 + h4).slice(0, 32);
+    }
+    document.getElementById('fp-recompute').addEventListener('click', render);
+    render();
+  })();
+
+  // ---------- Identity graph SVG ----------
+  (function () {
+    const svg = document.getElementById('identity-graph');
+    const W = 800, H = 460;
+    const cx = W / 2, cy = H / 2;
+    const nodes = [
+      { id: 'u', label: 'YOU', x: cx, y: cy, r: 38, color: '#00ffaa' },
+      { id: 'a1', label: 'phone-ad-id', x: cx - 220, y: cy - 140, r: 24, color: '#7c5cff' },
+      { id: 'a2', label: 'laptop-fp', x: cx + 220, y: cy - 140, r: 24, color: '#7c5cff' },
+      { id: 'a3', label: 'login@email', x: cx - 280, y: cy + 30, r: 26, color: '#ff3e7f' },
+      { id: 'a4', label: 'smart-tv-id', x: cx + 280, y: cy + 30, r: 24, color: '#7c5cff' },
+      { id: 'a5', label: 'loyalty-card', x: cx - 200, y: cy + 160, r: 24, color: '#ffd23e' },
+      { id: 'a6', label: 'cookie:abc', x: cx + 0, y: cy - 200, r: 20, color: '#7c5cff' },
+      { id: 'a7', label: 'mobile-SDK', x: cx + 200, y: cy + 160, r: 24, color: '#7c5cff' },
+      { id: 'a8', label: 'VPN-exit', x: cx - 90, y: cy + 200, r: 18, color: '#ffd23e', dashed: true },
+    ];
+    const edges = [
+      ['u', 'a1'], ['u', 'a2'], ['u', 'a3'], ['u', 'a4'], ['u', 'a5'],
+      ['u', 'a6'], ['u', 'a7'],
+      ['a1', 'a3'], ['a2', 'a4'], ['a3', 'a5'], ['a5', 'a7'],
+      ['a1', 'a6'], ['a4', 'a7'],
+      ['u', 'a8'],
+    ];
+
+    const ns = 'http://www.w3.org/2000/svg';
+    function el(tag, attrs) {
+      const e = document.createElementNS(ns, tag);
+      for (const k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    }
+
+    // edges
+    for (const [a, b] of edges) {
+      const A = nodes.find((n) => n.id === a);
+      const B = nodes.find((n) => n.id === b);
+      const line = el('line', {
+        x1: A.x, y1: A.y, x2: B.x, y2: B.y,
+        stroke: 'rgba(0, 255, 170, 0.4)', 'stroke-width': 1.4,
+      });
+      svg.appendChild(line);
+    }
+    // nodes
+    for (const n of nodes) {
+      const g = el('g', { class: 'g-node' });
+      const c = el('circle', {
+        cx: n.x, cy: n.y, r: n.r,
+        fill: n.color + '22',
+        stroke: n.color, 'stroke-width': 2,
+        'stroke-dasharray': n.dashed ? '4 3' : null,
+      });
+      const t = el('text', {
+        x: n.x, y: n.y + 4,
+        'text-anchor': 'middle',
+        fill: '#e8e8f0',
+        'font-size': n.id === 'u' ? 14 : 11,
+        'font-weight': n.id === 'u' ? 900 : 600,
+        'font-family': 'JetBrains Mono, monospace',
+      });
+      t.textContent = n.label;
+      g.appendChild(c);
+      g.appendChild(t);
+      svg.appendChild(g);
+    }
+  })();
+
+  // ---------- Counter animation ----------
+  (function () {
+    const els = document.querySelectorAll('.counter .num');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          const t = parseInt(e.target.dataset.target, 10);
+          let n = 0;
+          const step = Math.max(1, Math.floor(t / 60));
+          const id = setInterval(() => {
+            n += step;
+            if (n >= t) { n = t; clearInterval(id); }
+            e.target.textContent = n;
+          }, 25);
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.5 });
+    els.forEach((el) => io.observe(el));
+  })();
+
+  function consentLies() {
+    document.getElementById('callout').innerText =
+      "// you clicked Accept All. The data flows didn't change. The button was the only thing that did.";
+  }
+</script>
+
+</body>
+</html>
